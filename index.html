@@ -1,0 +1,152 @@
+<!doctype html>
+<html data-color-scheme="dark" lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <link href="/oruden-demo/favicon.png" rel="icon" type="image/png" />
+    <title>&lt;demo&gt; Oruden</title>
+    <style id="oruden-parser-early-touch-policy">
+      html,
+      body,
+      #root {
+        touch-action: pan-x pan-y;
+      }
+    </style>
+    <!-- React 19.2's development build logs every changed-props render to the
+         DevTools "Components" performance track, and building that entry walks
+         the previous and next props four levels deep with no cap on how many
+         entries it produces (`addObjectDiffToProperties` in
+         react-dom.development). A component whose prop is document-shaped
+         therefore pays one entry per key per render: on `apartment-real` (2308
+         objects) a single drag frame produced a ~61 s main-thread task and then
+         threw `Failed to execute 'measure' on 'Performance': Data cannot be
+         cloned, out of memory.` from inside the commit phase — which aborts the
+         commit, so passive effects never flush and anything waiting on one waits
+         forever (that is what left every perf capture unable to stop).
+
+         React reads this capability once, when its module body runs, from
+         `typeof console.timeStamp === "function"`. So the switch has to be
+         thrown before any module loads, which is why it lives here next to the
+         zoom guard rather than in `src/main.tsx`.
+
+         Off by default because an unbounded diff on this document shape is a
+         crash, and on demand for anyone who wants the track:
+         `localStorage.setItem("oruden.react-performance-track", "1")`, reload.
+         Nothing in this codebase calls `console.timeStamp`; production React
+         never reaches this path at all. -->
+    <script id="oruden-parser-early-react-performance-track">
+      (() => {
+        if (typeof console === "undefined") return;
+        if (typeof console.timeStamp !== "function") return;
+        let optedIn = false;
+        try {
+          optedIn =
+            window.localStorage.getItem("oruden.react-performance-track") ===
+            "1";
+        } catch {
+          // Private mode or blocked storage: keep the safe default.
+        }
+        if (optedIn) return;
+        Object.defineProperty(console, "timeStamp", {
+          configurable: true,
+          enumerable: false,
+          value: undefined,
+          writable: true,
+        });
+      })();
+    </script>
+    <script id="oruden-parser-early-zoom-guard">
+      (() => {
+        const target = window;
+        const registryKey = Symbol.for(
+          "oruden.browser-page-zoom-guard.installations",
+        );
+        let registry = globalThis[registryKey];
+        if (!registry) {
+          registry = new WeakMap();
+          Object.defineProperty(globalThis, registryKey, {
+            configurable: false,
+            enumerable: false,
+            value: registry,
+            writable: false,
+          });
+        }
+        if (registry.has(target)) {
+          return;
+        }
+
+        const options = { capture: true, passive: false };
+        const installation = {
+          behavior: {
+            handleWheelCapture(event) {
+              if (
+                event.ctrlKey ||
+                event.metaKey ||
+                Math.abs(event.deltaZ) > 0.01
+              ) {
+                event.preventDefault();
+              }
+            },
+            handleGestureCapture(event) {
+              event.preventDefault();
+            },
+          },
+        };
+        installation.handleWheelCapture = (event) => {
+          installation.behavior.handleWheelCapture(event);
+        };
+        installation.handleGestureCapture = (event) => {
+          installation.behavior.handleGestureCapture(event);
+        };
+        installation.uninstall = () => {
+          if (registry.get(target) !== installation) {
+            return;
+          }
+          target.removeEventListener(
+            "wheel",
+            installation.handleWheelCapture,
+            options,
+          );
+          for (const eventName of [
+            "gesturestart",
+            "gesturechange",
+            "gestureend",
+          ]) {
+            target.removeEventListener(
+              eventName,
+              installation.handleGestureCapture,
+              options,
+            );
+          }
+          registry.delete(target);
+        };
+
+        target.addEventListener(
+          "wheel",
+          installation.handleWheelCapture,
+          options,
+        );
+        for (const eventName of [
+          "gesturestart",
+          "gesturechange",
+          "gestureend",
+        ]) {
+          target.addEventListener(
+            eventName,
+            installation.handleGestureCapture,
+            options,
+          );
+        }
+        registry.set(target, installation);
+      })();
+    </script>
+    <script type="module" crossorigin src="/oruden-demo/assets/index-JW8spCkd.js"></script>
+    <link rel="modulepreload" crossorigin href="/oruden-demo/assets/vite-preload-helper-DchEIMOV.js">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+  </html>
